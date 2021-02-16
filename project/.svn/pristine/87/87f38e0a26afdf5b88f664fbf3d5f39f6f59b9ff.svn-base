@@ -1,0 +1,23 @@
+var http = require('http').createServer();
+var io=require('socket.io')(http);
+
+http.listen(3000, () => {
+    console.log("server started");
+});
+
+var players_count = 0;
+var players = [];
+
+io.sockets.on('connection',function(socket){
+    console.log('one player connected'); // server side
+    // socket.emit('text', 'wow. such event. very real time.');
+    socket.on('newPlayer', (data) => {
+        // socket.broadcast.emit('createNewPlayer', data); // for current players to load new player
+        players.push(data);
+        io.emit('createNewPlayer', players);
+    });
+    socket.on('goDown', (data)=>{
+        players[data]['location_y'] += 10;
+        socket.broadcast.emit('updatePlayer', players);
+    });
+});

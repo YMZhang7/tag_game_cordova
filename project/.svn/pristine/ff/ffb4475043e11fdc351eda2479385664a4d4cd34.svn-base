@@ -1,0 +1,384 @@
+// const e = require("express");
+
+// object for storing the info about active player
+let this_player = {
+    // index
+    // name
+    // toChase
+    // level
+    // location_x
+    // location_y
+    // ========= level 2
+    // iceCube
+    // shields
+    // ========= level 3
+    // rockets
+    // invisibilityCloak
+}; 
+let players = []; // retrieve from server
+let playerName = "";
+let playersCaught = 0;
+var catchButtonClicked = false;
+// var pace_length = 5;
+
+
+
+document.addEventListener('deviceready', onDeviceReady, false);
+
+const goUp_button = document.getElementById('up-key');
+const goDown_button = document.getElementById('down-key');
+const goLeft_button = document.getElementById('left-key');
+const goRight_button = document.getElementById('right-key');
+const catch_button = document.getElementById('catch-button')
+
+function getIndex(){
+    for (var i = 0; i < players.length; i++){
+        if (players[i]['name'] == playerName){
+            return i;
+        }
+    }
+}
+
+var seconds = 60;
+const second = rxjs.interval(1000);
+var timer = second.pipe(rxjs.operators.take(seconds));
+var timerSubscription;
+
+
+rxjs.fromEvent(goDown_button, 'click').subscribe(() => {
+    socket.emit('goDown', getIndex());
+});
+
+rxjs.fromEvent(goUp_button, 'click').subscribe(()=>{
+    socket.emit('goUp', getIndex());
+});
+
+rxjs.fromEvent(goLeft_button, 'click').subscribe(()=>{
+    socket.emit('goLeft', getIndex());
+});
+
+rxjs.fromEvent(goRight_button, 'click').subscribe(()=>{
+    socket.emit('goRight', getIndex());
+});
+
+rxjs.fromEvent(catch_button, 'click').subscribe(() => {
+    for (var i = 0; i < players.length; i++){
+        if (!players[i]['toCatch'] && getIndex() != i && canCatch(players[i], players[getIndex()])){
+            console.log('index.js caught');
+            catchButtonClicked = true;
+            socket.emit('caught', i);
+        }
+    }
+});
+
+
+function onDeviceReady() {
+    console.log('Running cordova-' + cordova.platformId + '@' + cordova.version);
+    document.getElementById('deviceready').classList.add('ready');
+}
+
+rxjs.fromEvent(document.getElementById('exitButton'), 'click').subscribe(() => {
+    socket.emit('playerQuit', this_player['index']);
+    players = [];
+});
+
+// function onConfirm(buttonIndex){
+//     console.log(buttonIndex);
+//     if (buttonIndex == 1){
+//         let playground = document.getElementsByClassName('playground')[0];
+//         while(playground.firstChild){
+//             playground.removeChild(playground.firstChild);
+//         }
+//         document.getElementById('gameroom-page').style.visibility = "hidden";
+//         document.getElementById('homepage').style.visibility = "visible";
+//         current_page = 'homepage';
+//         previous_page = 'homepage';
+//     }
+// }
+
+// Extract info and start the game
+function getRegistrationInfo(){
+    console.log(players.length);
+    let name = document.getElementById('nickname').value;
+    if (nameUsed(name)){
+        alert("This name is invalid. Please choose another one.");
+        return false;
+    } else {
+        this_player['index'] = players.length;
+        this_player['name'] = name;
+        playerName = name;
+        
+        this_player['level'] = 1;
+        let toChase;
+        if (document.getElementById('chase').checked){
+            toChase = true;
+            this_player['location_x'] = 0;
+            this_player['location_y'] = 0;
+        } else {
+            toChase = false;
+            this_player['location_x'] = 90;
+            this_player['location_y'] = 90;
+        }
+        this_player['toChase'] = toChase;
+        
+        socket.emit('newPlayer', this_player);
+        return true;
+    }
+}
+
+// To create HTML elements for a player
+function createPlayer(player){
+    // create circle and set content
+    const player_circle = document.createElement('div');
+    // player_circle.id = "currentPlayer";
+    player_circle.id = player['name'];
+    const name = document.createTextNode(player['name']);
+    player_circle.appendChild(name);
+    player_circle.className = "player";
+    // set background colour
+    if (player['level'] == 1){
+        player_circle.style.backgroundColor = "rgb(128, 255, 128)";
+    } else if (player['level'] == 2){
+        player_circle.style.backgroundColor = "rgb(51, 51, 255)";
+        // change font colour
+        player_circle.style.color = "white";
+    } else {
+        player_circle.style.backgroundColor = "rgb(255, 255, 0)";
+    }
+    // set border
+    if (player['toChase']){
+        player_circle.style.border = "4px solid orange";
+    } 
+    player_circle.style.top = player['location_y'] + "%";
+    player_circle.style.left = player['location_x'] + "%";
+    // add circle to playground
+    document.getElementsByClassName('playground')[0].appendChild(player_circle);
+}
+
+function upgradeToLevel2(index){
+    document.getElementById('backpack').style.visibility = "visible";
+    if (players[index]['toChase']){
+        players[index]['iceCube'] = 2;
+        document.getElementById('tools').innerHTML = "Ice cube: " + players[getIndex()]['iceCube'];
+        playersCaught = 0;
+    } else {
+        players[index]['shields'] = 2;
+        document.getElementById('tools').innerHTML = "Shields: " + players[getIndex()]['shields'];
+        seconds = 120;
+        // timer.next(seconds);
+        timer = second.pipe(rxjs.operators.take(seconds));
+        timerSubscription = timer.subscribe(
+            (sec) => {
+                var newWidth = 100 * (seconds - sec - 1) / seconds;
+                document.getElementById('time').style.width = newWidth + "%";
+                if (sec == (seconds - 1)){
+                    alert('level up!');
+                    upgradeToLevel3(getIndex());
+                    socket.emit('updatePlayer', players[getIndex()]);
+                }
+            },
+        );
+    }
+    // var useButton = document.createElement("button");
+    // useButton.innerHTML = "use";
+    // useButton.addEventListener('click', useTool);
+    // document.getElementById('backpack').appendChild(useButton);
+    players[index]['level'] = 2;
+    document.getElementById('level').innerHTML = "Level 2";
+    updatePlayerCircle(players[index]["name"], 2);
+}
+
+function upgradeToLevel3(index){
+    if (players[index]['toChase']){
+        delete players[index].iceCube;
+        players[index]['rocket'] = 2;
+        document.getElementById('tools').innerHTML = "Rocket: " + players[getIndex()]['rocket'];
+        playersCaught = 0;
+    } else {
+        delete players[index].shields;
+        players[index]['invisibilityCloak'] = 2;
+        document.getElementById('tools').innerHTML = "Invisibility cloak: " + players[getIndex()]['invisibilityCloak'];
+        seconds = 180;
+        timer = second.pipe(rxjs.operators.take(seconds));
+        timerSubscription = timer.subscribe(
+            (sec) => {
+                var newWidth = 100 * (seconds - sec - 1) / seconds;
+                document.getElementById('time').style.width = newWidth + "%";
+                if (sec == (seconds - 1)){
+                    alert('level up!');
+                    // !!!!
+                }
+            },
+        );
+    }
+    players[index]['level'] = 3;
+    document.getElementById('level').innerHTML = "Level 3";
+    updatePlayerCircle(players[index]["name"], 3);
+}
+
+function downgradeToLevel2(player){
+    if (player['toChase']){
+        delete player.rocket;
+        player['iceCube'] = 2;
+    } else {
+        delete player.invisibilityCloak;
+        player['shields'] = 2;
+    }
+    player['level'] = 2;
+}
+
+function downgradeToLevel1(player){
+    if (player['toChase']){
+        delete player.iceCube;
+    } else {
+        delete player.shields;
+    }
+    player['level'] = 1;
+}
+
+function canCatch(player1, player2){
+    let x1 = player1['location_x'];
+    let x2 = player2['location_x'];
+    let y1 = player1['location_y'];
+    let y2 = player2['location_y'];
+    let distance_x = Math.abs(x1 - x2);
+    let distance_y = Math.abs(y1 - y2);
+    if (distance_x <= 5 && distance_y <= 5){
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function nameUsed(name){
+    for (var i = 0; i < players.length; i++){
+        if (players[i]['name'] == name){
+            return true;
+        }
+    }
+    return false;
+}
+
+function updatePlayerCircle(name, level){
+    var player = document.getElementById(name);
+    if (level == 2){
+        player.style.backgroundColor = "rgb(51, 51, 255)";
+        player.style.color = "white";
+    } else if(level == 3){
+        player.style.backgroundColor = "rgb(255, 255, 0)";
+        player.style.color = "black";
+    }
+}
+
+function randomlySelectHidingPlayer(){
+    var list = [];
+    for (let i = 0; i < players.length; i++){
+        if (!players[i]['toChase']){
+            list.push(players[i]);
+        }
+    }
+    let ind = Math.floor(Math.random() * list.length); 
+    return list[ind];
+}
+
+function useTool(){
+    if (this_player['toChase']){
+        if (players[getIndex()]['level'] == 2){
+            if (players[getIndex()]['iceCube'] > 0){
+                players[getIndex()]['iceCube'] -= 1;
+                document.getElementById('tools').innerHTML = "Ice cube: " + players[getIndex()]['iceCube'];
+                socket.emit('useIceCube', getIndex()); // tell server to delete one icecube
+                let randomHidngPlayer = randomlySelectHidingPlayer();
+                socket.emit('paralysePlayer', randomHidngPlayer);
+            }
+        } else if (players[getIndex()]['level'] == 3){
+            if (players[getIndex()]['rocket'] > 0){
+                players[getIndex()]['rocket'] -= 1;
+                document.getElementById('tools').innerHTML = "Rocket: " + players[getIndex()]['rocket'];
+                socket.emit('useRocket', getIndex());
+                // pace_length = 10;
+                const rocketTime = document.createElement("div");
+                rocketTime.id = "rocketTime";
+                rocketTime.classList.add('time');
+                document.getElementById('bar').appendChild(rocketTime);
+                var rocketSeconds = 10;
+                rxjs.interval(1000).pipe(rxjs.operators.take(rocketSeconds)).subscribe(
+                    (sec) => {
+                        var newWidth = 100 * (10 - sec - 1) / 10;
+                        document.getElementById('rocketTime').style.width = newWidth + "%";
+                        if (sec == 9){
+                            alert('rocket times up');
+                            // socket.emit('updatePlayer', players[getIndex()]);
+                            // socket!!!! rocket stopped
+                            socket.emit('rocketStop');
+                        }
+                    },
+                );
+            }
+        }
+    } else {
+        if (players[getIndex()]['level'] == 2){
+            if (players[getIndex()]['shields'] > 0){
+                players[getIndex()]['shields'] -= 1;
+                document.getElementById('tools').innerHTML = "Shields: " + players[getIndex()]['shields'];
+                socket.emit('useShields', getIndex()); // tell server to delete one icecube
+            }
+        } else if (players[getIndex()]['level'] == 3){
+            players[getIndex()]['invisibilityCloak'] -= 1;
+            document.getElementById('tools').innerHTML = "Invisibility cloak: " + players[getIndex()]['invisibilityCloak'];
+            socket.emit('useCloak', getIndex());
+            document.getElementById(players[getIndex()]['name']).style.backgroundColor = "white";
+            var invisibleSeconds = 10;
+            rxjs.interval(1000).pipe(rxjs.operators.take(invisibleSeconds)).subscribe(
+                (sec) => {
+                    // var newWidth = 100 * (10 - sec - 1) / 10;
+                    // document.getElementById('rocketTime').style.width = newWidth + "%";
+                    if (sec == 9){
+                        alert('times up');
+                        // socket.emit('updatePlayer', players[getIndex()]);
+                        // socket!!!! rocket stopped
+                        socket.emit('invisibilityStop', getIndex());
+                    }
+                },
+            );
+        }
+    }
+}
+
+function updateCatchAlert(){
+    if (this_player['toChase']){
+        var catching = false;
+        for (let i = 0; i < players.length; i++){
+            if (players[i]['index'] != getIndex()){
+                if (!players[i]['toChase']){
+                    if (canCatch(players[i], players[getIndex()])){
+                        catching = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (catching){
+            catch_button.style.backgroundColor = "rgb(113, 218, 113)";
+        } else {
+            catch_button.style.backgroundColor = "gray";
+        }
+    } else {
+        var danger = false;
+        for (let i = 0; i < players.length; i++){
+            if (players[i]['toChase']){
+                if (canCatch(players[i], players[getIndex()])){
+                    danger = true;
+                    break;
+                }
+            }
+        }
+        if (danger){
+            document.getElementById('status-check').style.backgroundColor = "red";
+            document.getElementById('status-check').innerHTML = "danger";
+        } else {
+            document.getElementById('status-check').style.backgroundColor = "rgb(113, 218, 113)";
+            document.getElementById('status-check').innerHTML = "safe";
+        }
+    }
+}

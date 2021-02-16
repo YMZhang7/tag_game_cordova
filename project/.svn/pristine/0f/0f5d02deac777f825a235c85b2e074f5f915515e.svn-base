@@ -1,0 +1,11 @@
+var http = require('http').createServer();
+var io=require('socket.io')(http);
+
+http.listen(3000, () => {
+    console.log("server started");
+});
+
+io.sockets.on('connection',function(socket){
+    console.log('one player connected');
+    socket.emit('text', 'wow. such event. very real time.');
+});

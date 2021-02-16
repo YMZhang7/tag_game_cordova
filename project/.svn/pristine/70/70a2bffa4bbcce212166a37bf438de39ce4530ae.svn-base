@@ -1,0 +1,178 @@
+// client side
+var socket=io.connect('http://localhost:3000');
+rxjs.fromEvent(socket, 'connect').subscribe(() => {
+    console.log('one player joined');
+    socket.emit('requestPlayers');
+});
+
+rxjs.fromEvent(socket, 'disconnect').subscribe(() =>{socket.emit('playerQuit', getIndex())})
+
+rxjs.fromEvent(socket, 'players').subscribe((data) => {
+    players = data;
+    console.log(players.length);
+});
+
+
+// rxjs.fromEvent(socket, 'disconnect').subscribe(() => socket.emit('playerQuit', this_player['index']));
+
+rxjs.fromEvent(socket, 'createNewPlayer').subscribe((data)=> {
+    // alert('new player joined!');
+    for (var i = 0; i < data.length; i++){
+        if (document.getElementById(data[i]['name']) == null){
+            createPlayer(data[i]);
+        }
+    }
+    players = data;
+    // if (players.length != 0){
+    //     createPlayer(data[data.length-1]);
+    //     players.push(data[data.length - 1]);
+    // } else {
+    //     players = data;
+    //     console.log(players);
+    //     renderGame();
+    // }
+});
+
+rxjs.fromEvent(socket, 'goDown').subscribe((index)=>{
+    if(players[index]['location_y'] <= 85){
+        players[index]['location_y'] += 5;
+    } else {
+        players[index]['location_y'] = 90;
+    }
+    document.getElementById(players[index]['name']).style.top = players[index]['location_y'] + "%";
+    if (this_player['toChase']){
+        var catching = false;
+        for (let i = 0; i < players.length; i++){
+            if (players[i]['index'] != getIndex()){
+                if (!players[i]['toChase']){
+                    if (canCatch(players[i], players[getIndex()])){
+                        catching = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (catching){
+            catch_button.style.backgroundColor = "rgb(113, 218, 113)";
+        } else {
+            catch_button.style.backgroundColor = "gray";
+        }
+    }
+});
+
+rxjs.fromEvent(socket, 'goUp').subscribe((index)=>{
+    if(players[index]['location_y'] >= 5){
+        players[index]['location_y'] -= 5;
+    } else {
+        players[index]['location_y'] = 0;
+    }
+    document.getElementById(players[index]['name']).style.top = players[index]['location_y'] + "%";
+    if (this_player['toChase']){
+        var catching = false;
+        for (let i = 0; i < players.length; i++){
+            if (players[i]['index'] != getIndex()){
+                if (!players[i]['toChase']){
+                    if (canCatch(players[i], players[getIndex()])){
+                        catching = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (catching){
+            catch_button.style.backgroundColor = "rgb(113, 218, 113)";
+        } else {
+            catch_button.style.backgroundColor = "gray";
+        }
+    }
+});
+
+rxjs.fromEvent(socket, 'goLeft').subscribe((index)=>{
+    if(players[index]['location_x'] >= 5){
+        players[index]['location_x'] -= 5;
+    } else {
+        players[index]['location_x'] = 0;
+    }
+    document.getElementById(players[index]['name']).style.left = players[index]['location_x'] + "%";
+    if (this_player['toChase']){
+        var catching = false;
+        for (let i = 0; i < players.length; i++){
+            if (players[i]['index'] != getIndex()){
+                if (!players[i]['toChase']){
+                    if (canCatch(players[i], players[getIndex()])){
+                        catching = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (catching){
+            catch_button.style.backgroundColor = "rgb(113, 218, 113)";
+        } else {
+            catch_button.style.backgroundColor = "gray";
+        }
+    }
+});
+
+rxjs.fromEvent(socket, 'goRight').subscribe((index)=>{
+    if(players[index]['location_x'] <= 85){
+        players[index]['location_x'] += 5;
+    } else {
+        players[index]['location_x'] = 90;
+    }
+    document.getElementById(players[index]['name']).style.left = players[index]['location_x'] + "%";
+    if (this_player['toChase']){
+        var catching = false;
+        for (let i = 0; i < players.length; i++){
+            if (players[i]['index'] != getIndex()){
+                if (!players[i]['toChase']){
+                    if (canCatch(players[i], players[getIndex()])){
+                        catching = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (catching){
+            catch_button.style.backgroundColor = "rgb(113, 218, 113)";
+        } else {
+            catch_button.style.backgroundColor = "gray";
+        }
+    }
+
+    
+});
+
+rxjs.fromEvent(socket, 'playerCaught').subscribe((ind)=>{
+    if (getIndex() == ind){
+        alert('You are caught!');
+        timerSubscription.unsubscribe();
+        document.getElementById('time').style.width = "100%";
+        seconds = 60;
+        timerSubscription = timer.subscribe((sec) => {
+            var newWidth = 100 * (60 - sec - 1) / 60;
+            document.getElementById('time').style.width = newWidth + "%";
+        });
+    } else if(catchButtonClicked){
+        catchButtonClicked = false;
+        playersCaught++;
+        // level up
+        if (players[getIndex()]['level'] == 1){
+            upgradeToLevel2(getIndex());
+            document.getElementById('level').innerHTML = "Level 2";
+            document.getElementById('backpack').innerHTML = "Ice cube: " + players[getIndex()]['iceCube'];
+            socket.emit('updatePlayer', players[getIndex()]);
+        }
+    }
+});
+
+rxjs.fromEvent(socket, 'updatePlayer').subscribe((data) => players = data);
+
+rxjs.fromEvent(socket, 'playerQuit').subscribe((data) => {
+    console.log('one player quit');
+    var name = players[data]['name'];
+    console.log(players);
+    players.splice(data, 1);
+    console.log(players);
+    document.getElementById(name).style.display = "none";
+});

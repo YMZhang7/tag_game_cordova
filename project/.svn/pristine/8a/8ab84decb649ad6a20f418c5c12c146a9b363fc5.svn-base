@@ -1,0 +1,51 @@
+// client side
+var socket=io.connect('http://localhost:3000');
+rxjs.fromEvent(socket, 'connect').subscribe(() => console.log('one player joined'));
+
+rxjs.fromEvent(socket, 'createNewPlayer').subscribe((data)=> {
+    // alert('new player joined!');
+    if (players.length != 0){
+        createPlayer(data[data.length-1]);
+        players.push(data[data.length - 1]);
+    } else {
+        players = data;
+        // console.log(players);
+        renderGame();
+    }
+});
+
+rxjs.fromEvent(socket, 'goDown').subscribe((index)=>{
+    if(players[index]['location_y'] <= 85){
+        players[index]['location_y'] += 5;
+    } else {
+        players[index]['location_y'] = 90;
+    }
+    document.getElementById(players[index]['name']).style.top = players[index]['location_y'] + "%";
+});
+
+rxjs.fromEvent(socket, 'goUp').subscribe((index)=>{
+    if(players[index]['location_y'] >= 5){
+        players[index]['location_y'] -= 5;
+    } else {
+        players[index]['location_y'] = 0;
+    }
+    document.getElementById(players[index]['name']).style.top = players[index]['location_y'] + "%";
+});
+
+rxjs.fromEvent(socket, 'goLeft').subscribe((index)=>{
+    if(players[index]['location_x'] >= 5){
+        players[index]['location_x'] -= 5;
+    } else {
+        players[index]['location_x'] = 0;
+    }
+    document.getElementById(players[index]['name']).style.left = players[index]['location_x'] + "%";
+});
+
+rxjs.fromEvent(socket, 'goRight').subscribe((index)=>{
+    if(players[index]['location_x'] <= 85){
+        players[index]['location_x'] += 5;
+    } else {
+        players[index]['location_x'] = 90;
+    }
+    document.getElementById(players[index]['name']).style.left = players[index]['location_x'] + "%";
+});

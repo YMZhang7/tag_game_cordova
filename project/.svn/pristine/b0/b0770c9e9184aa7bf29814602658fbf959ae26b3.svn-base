@@ -1,0 +1,226 @@
+
+// object for storing the info about active player
+let this_player = {
+    // name
+    // toChase
+    // level
+    // location_x
+    // location_y
+    // ========= level 2
+    // iceCube
+    // shields
+    // ========= level 3
+    // rockets
+    // invisibilityCloak
+}; 
+let gears = [];
+
+let pace_length = 15;
+// let playground_upper_bound = ;
+
+let current_page = 'homepage';
+let previous_page = 'homepage';
+
+
+document.addEventListener('deviceready', onDeviceReady, false);
+document.addEventListener('backbutton', onBackKeyDown, false);
+
+function onDeviceReady() {
+    // Cordova is now initialized. Have fun!
+    console.log('Running cordova-' + cordova.platformId + '@' + cordova.version);
+    // document.getElementById('deviceready').classList.add('ready');
+}
+
+function onBackKeyDown() {
+    if (current_page != 'gameroom-page'){
+        document.getElementById(current_page).style.visibility = "hidden";
+        document.getElementById(previous_page).style.visibility = "visible";
+    } else {
+        navigator.notification.confirm('Are you sure you want to exit the game?', onConfirm, 'Notice', ['Exit', 'Cancel']);
+    }
+}
+
+function onConfirm(buttonIndex){
+    console.log(buttonIndex);
+    if (buttonIndex == 1){
+        let playground = document.getElementsByClassName('playground')[0];
+        while(playground.firstChild){
+            playground.removeChild(playground.firstChild);
+        }
+        document.getElementById('gameroom-page').style.visibility = "hidden";
+        document.getElementById('homepage').style.visibility = "visible";
+        current_page = 'homepage';
+        previous_page = 'homepage';
+    }
+}
+
+// Go to registration page
+function callRegistrationPage(){
+    document.getElementById('homepage').style.visibility = "hidden";
+    document.getElementById('registration-page').style.visibility = "visible";
+    current_page = 'registration-page';
+}
+
+function exitGame(){
+    let playground = document.getElementsByClassName('playground')[0];
+    while(playground.firstChild){
+        playground.removeChild(playground.firstChild);
+    }
+    document.getElementById('gameroom-page').style.visibility = "hidden";
+    document.getElementById('homepage').style.visibility = "visible";
+    current_page = 'homepage';
+    previous_page = 'homepage';
+}
+
+// Extract info and start the game
+function getRegistrationInfo(){
+    let name = document.getElementById('nickname').value;
+    let toChase;
+    if (document.getElementById('chase').checked){
+        toChase = true;
+    } else {
+        toChase = false;
+    }
+    // store info about player
+    this_player['name'] = name;
+    this_player['toChase'] = toChase;
+    this_player['level'] = 1;
+    this_player['location_x'] = 0;
+    this_player['location_y'] = 0;
+    // set display in new page
+    document.getElementById('level').innerHTML = 'Level 1';
+    // switch between pages
+    document.getElementById('registration-page').style.visibility = "hidden";
+    // document.getElementById('homepage').style.visibility = "hidden";
+    document.getElementById('gameroom-page').style.visibility = "visible";
+    current_page = 'gameroom-page';
+    previous_page = 'registration-page';
+    createPlayer(this_player);
+}
+
+// To create HTML elements for a player
+function createPlayer(player){
+    // create circle and set content
+    const player_circle = document.createElement('div');
+    player_circle.id = "currentPlayer";
+    const name = document.createTextNode(player['name']);
+    player_circle.appendChild(name);
+    player_circle.style.fontSize = "90%";
+    player_circle.style.wordWrap = "break-word";
+    player_circle.style.display = "flex";
+    player_circle.style.flexDirection = "column";
+    player_circle.style.justifyContent = "center";
+    player_circle.style.alignItems = "center";
+    // set position in playground
+    player_circle.style.position = "relative";
+    player_circle.style.left = player['location_x'];
+    player_circle.style.top = player['location_y'];
+    // shape and colour
+    player_circle.style.borderRadius = "50%";
+    player_circle.style.width = "40px";
+    player_circle.style.height = "40px";
+    if (player['level'] == 1){
+        player_circle.style.backgroundColor = "rgb(128, 255, 128)";
+    } else if (player['level'] == 2){
+        player_circle.style.backgroundColor = "rgb(51, 51, 255)";
+        // change font colour
+        player_circle.style.color = "white";
+    } else {
+        player_circle.style.backgroundColor = "rgb(255, 255, 0)";
+    }
+    if (player['toChase']){
+        player_circle.style.border = "4px solid orange";
+        // console.log('chasing');
+        console.log(player['toChase']);
+    } else {
+        console.log('hiding');
+    }
+    // add circle to playground
+    document.getElementsByClassName('playground')[0].appendChild(player_circle);
+}
+
+function upgradeToLevel2(player){
+    if (player['toChase']){
+        player['iceCube'] = 2;
+    } else {
+        player['shields'] = 2;
+    }
+    player['level'] = 2;
+}
+
+function upgradeToLevel3(player){
+    if (player['toChase']){
+        delete player.iceCube;
+        player['rocket'] = 2;
+    } else {
+        delete player.shields;
+        player['invisibilityCloak'] = 2;
+    }
+    player['level'] = 3;
+}
+
+function downgradeToLevel2(player){
+    if (player['toChase']){
+        delete player.rocket;
+        player['iceCube'] = 2;
+    } else {
+        delete player.invisibilityCloak;
+        player['shields'] = 2;
+    }
+    player['level'] = 2;
+}
+
+function downgradeToLevel1(player){
+    if (player['toChase']){
+        delete player.iceCube;
+    } else {
+        delete player.shields;
+    }
+    player['level'] = 1;
+}
+
+function goUp(){
+    console.log('Up');
+    const currentPlayer = document.getElementById('currentPlayer');
+    // update position in playground
+    if (this_player['location_y'] < pace_length){
+        this_player['location_y'] = 0;
+    } else {
+        this_player['location_y'] -= pace_length;
+    }
+    currentPlayer.style.top = this_player['location_y'];
+    // update info in server
+} 
+
+function goDown(){
+    console.log('Down');
+    const currentPlayer = document.getElementById('currentPlayer');
+    // update position in playground
+    this_player['location_y'] += pace_length;
+    currentPlayer.style.top = this_player['location_y'];
+    // update info in server
+}
+
+function goLeft(){
+    console.log("Left");
+    const currentPlayer = document.getElementById('currentPlayer');
+    // update position in playground
+    this_player['location_x'] -= pace_length;
+    currentPlayer.style.left = this_player['location_x'];
+    // update info in server
+}
+
+function goRight(){
+    console.log("right");
+    const currentPlayer = document.getElementById('currentPlayer');
+    // update position in playground
+    this_player['location_x'] += pace_length;
+    currentPlayer.style.left = this_player['location_x'];
+    // update info in server
+}
+
+function toCatch(){
+    console.log("Caught!");
+    // let distance = ?
+    // if (distance < 5px){}
+}
